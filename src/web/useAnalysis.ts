@@ -25,6 +25,10 @@ export function useAnalysis(t: Strings) {
     e instanceof ApiError
       ? e.code === "not_configured"
         ? t.errNotConfigured
+        : e.code === "rate_limited"
+          ? t.errRateLimited
+          : e.code === "timeout"
+            ? t.errTimeout
         : ["bad_image", "not_png_or_jpeg", "too_large", "empty"].includes(e.code)
           ? t.errBadImage
           : e.message && e.message !== e.code

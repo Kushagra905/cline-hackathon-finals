@@ -122,6 +122,8 @@ export const en = {
   unsupported: "This structure is not supported (one disbursement and one end-of-term repayment only), so no number is shown.",
   errTitle: "Something went wrong",
   errNotConfigured: "AI extraction is not configured on the server.",
+  errRateLimited: "Too many extraction requests right now. Please wait a minute and try again.",
+  errTimeout: "The AI took too long to read the document. Please try again.",
   errBadImage: "That file is not a valid PNG/JPEG under 8 MB.",
   errGeneric: "Extraction failed. You can try again.",
   retry: "Try again",

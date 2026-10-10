@@ -1,6 +1,6 @@
 # LoanClear: handoff
 
-Last updated after the recovery session. Active milestone: M0 only.
+Last updated after the submission finalisation pass (see "Final state" below).
 
 ## Status: Milestone 0 verified; first vertical slice runs locally
 
@@ -41,6 +41,13 @@ The server records the tool names the SDK sends to the model (`beforeModel` hook
 - Server calculation is stateless: it trusts the browser's confirmed keys (no login or sessions, per scope). So "AI cannot confirm" is enforced because the model never writes browser state.
 - No PPT, demo video, README or deploy yet (submission phase). No rate-limit/injection fixture test yet.
 - Cost/usage per request is returned by the SDK but not displayed.
+
+## Final state (submission pass)
+- App complete for the supported scope; README.md is the main document.
+- Deployment-ready, **not deployed**: binds `0.0.0.0` when `PORT` is set (`HOST` overrides), `TRUST_PROXY`, global hourly extraction cap `EXTRACT_MAX_PER_HOUR` (default 120) on top of 12/min per IP, 120 s request timeout. `render.yaml` Blueprint added (secret `CLINE_API_KEY` set in the dashboard). The UI shows clear EN/HI messages for rate-limit and timeout errors.
+- Verified this pass: build exit 0; 26/26 unit tests; `npm run e2e` 53/53 on live AI against a `PORT=8790` production-mode server; 400 for bad bytes or kind, 413 above 8 MB; no credential names in the client bundle.
+- Runtime: `@cline/sdk` 0.0.92, model `anthropic/claude-sonnet-5.5`.
+- Remaining user actions: (1) merge the pushed branch on GitHub; (2) deploy on Render (New → Blueprint → enter `CLINE_API_KEY`) and check `/api/status` plus one sample flow; (3) restart any local `npm start` to pick up the server changes.
 
 ## Frontend redesign pass (Arto Plus layout + OOZE typography)
 - Shell: sticky top bar (LC wordmark, EN/HI toggle), 212px workflow rail on desktop mapped to the existing 5 steps; compact horizontal progress bar + "Step n of 5" on ≤860px.

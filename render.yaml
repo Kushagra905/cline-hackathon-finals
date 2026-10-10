@@ -1,0 +1,22 @@
+# Render Blueprint for LoanClear (one Node web service: Express API + built React client).
+# Secrets are NOT stored here: set CLINE_API_KEY in the Render dashboard (sync: false).
+services:
+  - type: web
+    name: loanclear
+    runtime: node
+    plan: free
+    # tsx and vite are devDependencies and are needed for build and start
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: CLINE_API_KEY
+        sync: false
+      - key: CLINE_MODEL_ID
+        value: anthropic/claude-sonnet-5.5
+      - key: TRUST_PROXY
+        value: "1"
+      - key: EXTRACT_MAX_PER_HOUR
+        value: "120"

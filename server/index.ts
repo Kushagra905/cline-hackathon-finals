@@ -16,15 +16,24 @@ if (existsSync(envFile)) process.loadEnvFile(envFile); // loads into process.env
 
 const app = express();
 app.disable("x-powered-by");
+// behind a hosting proxy (Render, Railway, Fly...) req.ip must come from X-Forwarded-For
+if (process.env.TRUST_PROXY) app.set("trust proxy", Number(process.env.TRUST_PROXY) || 1);
 
-// --- tiny per-IP rate limit on the paid endpoint (protects credits) ---
+// --- protection for the paid endpoint (protects credits) ---
+// per-IP: 12 extractions/minute; global: EXTRACT_MAX_PER_HOUR (default 120) across all users.
 const hits = new Map<string, number[]>();
+const globalHits: number[] = [];
+const GLOBAL_MAX_PER_HOUR = Number(process.env.EXTRACT_MAX_PER_HOUR ?? 120);
 function rateLimit(ip: string, max = 12, windowMs = 60_000): boolean {
   const now = Date.now();
   const arr = (hits.get(ip) ?? []).filter((t) => now - t < windowMs);
   arr.push(now);
   hits.set(ip, arr);
-  return arr.length <= max;
+  if (hits.size > 5_000) for (const [k, v] of hits) if (v.every((t) => now - t >= windowMs)) hits.delete(k); // bound memory
+  while (globalHits.length && now - globalHits[0] >= 3_600_000) globalHits.shift();
+  if (arr.length > max || globalHits.length >= GLOBAL_MAX_PER_HOUR) return false;
+  globalHits.push(now);
+  return true;
 }
 
 app.get("/api/status", (_req, res) => {
@@ -92,7 +101,12 @@ if (existsSync(dist)) {
   app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(join(dist, "index.html")));
 }
 
+// Locally binds to loopback only. Hosting platforms set PORT, so then bind all interfaces (override with HOST).
 const port = Number(process.env.PORT ?? 8787);
-app.listen(port, "127.0.0.1", () => {
-  console.log(`LoanClear server on http://127.0.0.1:${port} (AI ${isConfigured() ? "configured" : "NOT configured"})`);
+const host = process.env.HOST ?? (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
+const server = app.listen(port, host, () => {
+  console.log(`LoanClear server on http://${host}:${port} (AI ${isConfigured() ? "configured" : "NOT configured"})`);
 });
+// the extraction itself times out at 90 s (server/cline/client.ts); cap whole requests a little above that
+server.requestTimeout = 120_000;
+server.headersTimeout = 30_000;
