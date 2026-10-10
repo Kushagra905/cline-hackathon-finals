@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# secrets: never commit real env files
+.env
+.env.*
+!.env.example
+
+# logs and OS/editor noise
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# SDK / agent local state and spike output
+.cline/
+scripts/out/

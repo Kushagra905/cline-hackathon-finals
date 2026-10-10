@@ -1,0 +1,24 @@
+{
+  "_label": "SYNTHETIC expectations for the Milestone 0 SDK spike. Amounts are integer paise.",
+  "offer": {
+    "file": "offer-synthetic.png",
+    "kind": "offer",
+    "expected": {
+      "netCredited": { "status": "found", "valuePaise": 950000 },
+      "principal": { "status": "missing" },
+      "totalRepayment": { "status": "missing" },
+      "withheldFees": { "status": "missing" }
+    }
+  },
+  "kfs": {
+    "file": "final-terms-synthetic.png",
+    "kind": "kfs",
+    "expected": {
+      "principal": { "status": "found", "valuePaise": 1000000 },
+      "withheldFees": { "status": "found", "valuePaise": 200000 },
+      "netCredited": { "status": "found", "valuePaise": 800000 },
+      "totalRepayment": { "status": "found", "valuePaise": 1050000 },
+      "tenureDays": { "status": "found", "valueDays": 30 }
+    }
+  }
+}

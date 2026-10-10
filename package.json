@@ -1,0 +1,51 @@
+{
+  "name": "cline-hackathon-finals",
+  "version": "1.0.0",
+  "description": "LoanClear: compare an advertised loan offer with final terms/KFS using deterministic integer-paise calculations.",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.web.json",
+    "build": "npm run typecheck && vite build",
+    "start": "tsx server/index.ts",
+    "dev": "tsx watch server/index.ts",
+    "dev:web": "vite",
+    "fixtures:make": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/make-fixtures.ps1",
+    "sdk:smoke": "tsx scripts/sdk-smoke.ts",
+    "e2e": "tsx scripts/e2e.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kushagra905/cline-hackathon-finals.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Kushagra905/cline-hackathon-finals/issues"
+  },
+  "homepage": "https://github.com/Kushagra905/cline-hackathon-finals#readme",
+  "dependencies": {
+    "@cline/sdk": "^0.0.92",
+    "express": "^5.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "puppeteer-core": "^25.13.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  }
+}
