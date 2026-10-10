@@ -4,7 +4,8 @@
 
 LoanClear compares an advertised loan offer with the final terms / Key Facts Statement (KFS). AI reads the screenshots; **you** confirm every fact; plain code calculates. It gives facts only: no APR, no "scam/safe" verdicts, no recommendations.
 
-> Hackathon prototype. Not deployed publicly yet (see [Deployment](#deployment)). Not validated with real users.
+> **Live demo: https://loanclear.onrender.com** (Render free plan: the first request after inactivity can take about a minute while it wakes up).
+> Hackathon prototype. Not validated with real users.
 
 ## Problem
 A borrower in India often sees a headline offer ("₹9,500 credited") and later receives final terms where charges are withheld at disbursal, so less money arrives than expected, and the repayment total is somewhere else on the page. Working out *how much actually reaches you*, *how much you pay back* and *what changed since the offer* means reading two documents and doing the arithmetic yourself.
@@ -72,7 +73,9 @@ Other scripts: `npm test` (unit tests), `npm run e2e` (browser flow against a ru
 - Production-mode server check: binds `0.0.0.0` when `PORT` is set, serves the built client, rejects non-image bytes (400), an unknown document kind (400) and >8 MB bodies (413); the browser bundle contains no credential names.
 
 ## Deployment
-Not deployed yet. The app is one Node service and is ready for any Node host:
+Deployed on Render at **https://loanclear.onrender.com** from `main` using `render.yaml`. Verified there: `/api/status` reports `aiConfigured: true`, the built client and samples are served, non-image uploads are rejected (400), and the full `npm run e2e` suite passed **53/53 on live AI** against the public URL (`LC_URL=https://loanclear.onrender.com`).
+
+The app is one Node service and runs on any Node host:
 - **Build:** `npm ci --include=dev && npm run build` · **Start:** `npm start`
 - **Env:** `CLINE_API_KEY` (secret), `CLINE_MODEL_ID`, optional `TRUST_PROXY=1` behind a proxy and `EXTRACT_MAX_PER_HOUR`. `PORT` is read automatically; when it is set the server binds `0.0.0.0`.
 - **Render:** `render.yaml` is included. In Render choose *New → Blueprint*, select this repository, enter `CLINE_API_KEY` when prompted, deploy, then open `/api/status` (it should report `aiConfigured: true`).
