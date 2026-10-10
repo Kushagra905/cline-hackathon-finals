@@ -51,7 +51,7 @@ app.post(
     if (!check.ok) return void res.status(400).json({ error: check.reason });
     try {
       const { extraction, meta } = await extractDocument(kind, new Uint8Array(body as Buffer), check.mediaType);
-      res.json({ extraction, source: "live-ai", modelId: meta.modelId, toolsExposed: meta.toolsExposed });
+      res.json({ extraction, source: "live-ai", modelId: meta.modelId, toolsExposed: meta.toolsExposed, toolCalls: meta.toolCalls });
     } catch (e) {
       const err = e instanceof ExtractionError ? e : new ExtractionError("model_failed", "Extraction failed.");
       const status = err.code === "not_configured" ? 503 : err.code === "timeout" ? 504 : 502;

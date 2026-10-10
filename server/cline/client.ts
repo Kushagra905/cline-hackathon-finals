@@ -29,6 +29,8 @@ export interface ExtractionMeta {
   modelId: string;
   /** tool names the SDK actually sent to the model on the last call (to inspect built-ins) */
   toolsExposed: string[];
+  /** how many times the app-specific submit_extraction tool actually executed in this run */
+  toolCalls: number;
   usage?: unknown;
 }
 
@@ -121,7 +123,7 @@ export async function extractDocument(
     } catch (e) {
       throw new ExtractionError("bad_output", (e as Error).message);
     }
-    return { extraction, meta: { modelId, toolsExposed: [...toolsExposed], usage: r.usage } };
+    return { extraction, meta: { modelId, toolsExposed: [...toolsExposed], toolCalls: calls, usage: r.usage } };
   } catch (e) {
     if (e instanceof ExtractionError) throw e;
     throw new ExtractionError("model_failed", redact(e instanceof Error ? e.message : String(e)));

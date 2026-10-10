@@ -22,6 +22,12 @@ export interface CompareNote {
 export interface CompareResult {
   diffs: ConceptDiff[];
   notes: CompareNote[];
+  /**
+   * Final-terms net credited minus offer net credited, integer paise (negative = less received
+   * than the offer stated). Present only when BOTH are user-confirmed. This is a change in the
+   * amount received; it is NOT the borrowing cost and must be displayed separately from it.
+   */
+  netCreditedChangePaise?: number;
 }
 
 export function compareDocuments(offer: DocFields | undefined, kfs: DocFields | undefined): CompareResult {
@@ -29,7 +35,7 @@ export function compareDocuments(offer: DocFields | undefined, kfs: DocFields | 
   const notes: CompareNote[] = [];
 
   const evidence = (f: ReturnType<typeof usableField>) =>
-    f ? { text: f.supportingText, documentId: f.documentId, qualifierText: f.qualifierText } : undefined;
+    f ? { text: f.supportingText, documentId: f.documentId, qualifierText: f.qualifierText, origin: f.origin } : undefined;
 
   for (const key of [...MONEY_KEYS, "tenureDays" as FieldKey]) {
     const o = usableField(offer, key);
@@ -58,5 +64,8 @@ export function compareDocuments(offer: DocFields | undefined, kfs: DocFields | 
   if (usableField(offer, "principal") && !usableField(offer, "netCredited")) {
     notes.push({ code: "offer_principal_not_net_credit", key: "principal" });
   }
-  return { diffs, notes };
+  const on = usableField(offer, "netCredited")?.valuePaise;
+  const kn = usableField(kfs, "netCredited")?.valuePaise;
+  const netCreditedChangePaise = on !== undefined && kn !== undefined ? kn - on : undefined;
+  return { diffs, notes, netCreditedChangePaise };
 }

@@ -11,6 +11,9 @@ export interface DocState {
   /** keys the USER confirmed by clicking. The server/AI never sets this. */
   confirmed: FieldKey[];
   modelId: string;
+  /** runtime facts the server reported for THIS extraction (never inferred by the UI) */
+  toolCalls: number;
+  toolsExposed: string[];
 }
 
 export class ApiError extends Error {
@@ -19,24 +22,24 @@ export class ApiError extends Error {
   }
 }
 
-export async function extract(kind: DocKind, blob: Blob): Promise<{ extraction: DocumentExtraction; modelId: string; toolsExposed: string[] }> {
+export async function extract(kind: DocKind, blob: Blob): Promise<{ extraction: DocumentExtraction; modelId: string; toolsExposed: string[]; toolCalls: number }> {
   let res: Response;
   try {
     res = await fetch(`/api/extract/${kind}`, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: blob });
   } catch {
     throw new ApiError("network");
   }
-  const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string; extraction?: DocumentExtraction; modelId?: string; toolsExposed?: string[]; source?: string };
+  const data = (await res.json().catch(() => ({}))) as { error?: string; message?: string; extraction?: DocumentExtraction; modelId?: string; toolsExposed?: string[]; toolCalls?: number; source?: string };
   if (!res.ok || !data.extraction) throw new ApiError(data.error ?? "failed", data.message);
   if (data.source !== "live-ai") throw new ApiError("failed", "Unexpected response source");
-  return { extraction: data.extraction, modelId: data.modelId ?? "", toolsExposed: data.toolsExposed ?? [] };
+  return { extraction: data.extraction, modelId: data.modelId ?? "", toolsExposed: data.toolsExposed ?? [], toolCalls: data.toolCalls ?? 0 };
 }
 
 export interface CalcResponse {
   blocked: boolean;
   missing?: FieldKey[];
   calculation?: { ok: boolean; error?: string; borrowingCostPaise?: number; tenureDays?: number; costPerDayPaise?: number; caveats: string[] };
-  comparison: { diffs: ConceptDiff[]; notes: CompareNote[] };
+  comparison: { diffs: ConceptDiff[]; notes: CompareNote[]; netCreditedChangePaise?: number };
 }
 
 export async function calculate(offer: DocState | undefined, kfs: DocState): Promise<CalcResponse> {

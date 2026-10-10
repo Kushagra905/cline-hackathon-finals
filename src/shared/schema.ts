@@ -170,8 +170,8 @@ export interface ConceptDiff {
   kfsValuePaise?: number;
   /** true when both present and values differ */
   differs: boolean;
-  offerEvidence?: { text: string; documentId: string; qualifierText?: string };
-  kfsEvidence?: { text: string; documentId: string; qualifierText?: string };
+  offerEvidence?: { text: string; documentId: string; qualifierText?: string; origin?: "ai" | "user" };
+  kfsEvidence?: { text: string; documentId: string; qualifierText?: string; origin?: "ai" | "user" };
 }
 
 export interface FullResult {

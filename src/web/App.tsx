@@ -1,135 +1,151 @@
-import { useState } from "react";
-import { ApiError, calculate, extract, type CalcResponse, type DocKind, type DocState } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { missingCriticalKeys } from "../finance/facts";
+import type { DocKind } from "./api";
+import { HowPanel } from "./HowPanel";
 import { STRINGS, type Lang } from "./i18n";
 import { ResultCard } from "./ResultStep";
-import { ReviewCard } from "./ReviewStep";
-import { UploadCard, type Picked } from "./UploadStep";
-
-type Phase = "upload" | "extracting" | "review";
+import { ReviewBoard } from "./ReviewStep";
+import { Stepper } from "./Stepper";
+import { UploadCard } from "./UploadStep";
+import { useAnalysis } from "./useAnalysis";
 
 export function App() {
   const [lang, setLang] = useState<Lang>("en");
   const t = STRINGS[lang];
-  const [picked, setPicked] = useState<Partial<Record<DocKind, Picked>>>({});
-  const [docs, setDocs] = useState<Partial<Record<DocKind, DocState>>>({});
-  const [phase, setPhase] = useState<Phase>("upload");
-  const [error, setError] = useState<string | null>(null);
-  const [calcBusy, setCalcBusy] = useState(false);
-  const [result, setResult] = useState<CalcResponse | null>(null);
+  const a = useAnalysis(t);
+  const { picked, docs, phase, error, calcBusy, result } = a;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const resultsRef = useRef<HTMLHeadingElement>(null);
 
-  const errText = (e: unknown) =>
-    e instanceof ApiError
-      ? e.code === "not_configured"
-        ? t.errNotConfigured
-        : e.code === "bad_image" || e.code === "not_png_or_jpeg" || e.code === "too_large" || e.code === "empty"
-          ? t.errBadImage
-          : e.message && e.message !== e.code
-            ? `${t.errGeneric} (${e.message})`
-            : t.errGeneric
-      : t.errGeneric;
-
-  async function runExtraction() {
-    if (!picked.kfs) return;
-    setError(null);
-    setResult(null);
-    setPhase("extracting");
-    try {
-      const kinds = (["offer", "kfs"] as DocKind[]).filter((k) => picked[k]);
-      // each document is extracted separately, in its own model call
-      const out = await Promise.all(kinds.map((k) => extract(k, (picked[k] as Picked).blob)));
-      const next: Partial<Record<DocKind, DocState>> = {};
-      kinds.forEach((k, i) => {
-        const x = out[i];
-        next[k] = { original: x.extraction, fields: x.extraction.fields.map((f) => ({ ...f })), confirmed: [], modelId: x.modelId };
-      });
-      setDocs(next);
-      setPhase("review");
-    } catch (e) {
-      setError(errText(e));
-      setPhase("upload");
-    }
-  }
-
-  async function runCalc() {
-    if (!docs.kfs) return;
-    setCalcBusy(true);
-    setError(null);
-    try {
-      setResult(await calculate(docs.offer, docs.kfs));
-    } catch (e) {
-      setError(errText(e));
-    } finally {
-      setCalcBusy(false);
-    }
-  }
-
-  const reset = () => {
-    setPicked({});
-    setDocs({});
-    setResult(null);
-    setError(null);
-    setPhase("upload");
-  };
-
-  const setDoc = (k: DocKind, d: DocState) => {
-    setDocs((prev) => ({ ...prev, [k]: d }));
-    setResult(null); // any change invalidates a previous result
-  };
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+  // move focus to the review heading once extraction finishes (keyboard / screen-reader users)
+  useEffect(() => {
+    if (phase === "review") headingRef.current?.focus();
+  }, [phase]);
 
   const kfsField = (key: "netCredited" | "totalRepayment") => docs.kfs?.fields.find((f) => f.key === key)?.valuePaise;
   const busy = phase === "extracting";
 
+  // steps: 0 upload, 1 extract, 2 review, 3 confirm, 4 costs
+  const kfsMissing = docs.kfs ? missingCriticalKeys({ fields: docs.kfs.fields, confirmedKeys: docs.kfs.confirmed }) : [];
+  const calcOk = !!result && !result.blocked && !!result.calculation?.ok;
+  const step = phase === "upload" ? 0 : phase === "extracting" ? 1 : calcOk ? 4 : docs.kfs && docs.kfs.confirmed.length > 0 ? 3 : 2;
+  const critTotal = 3; // net credited, total repayment, tenure
+  const critDone = critTotal - kfsMissing.filter((k) => ["netCredited", "totalRepayment", "tenureDays"].includes(k)).length;
+  const labels: Record<DocKind, string> = { offer: t.offerDoc, kfs: t.kfsDoc };
+  const inReview = phase === "review" && !!docs.kfs;
+
+  // a successful calculation moves focus to the summary at the top of the workspace
+  useEffect(() => {
+    if (calcOk) resultsRef.current?.focus();
+  }, [calcOk]);
+
+  const resultCard = result && <ResultCard t={t} res={result} kfsNet={kfsField("netCredited")} kfsRepay={kfsField("totalRepayment")} />;
+
   return (
-    <main>
-      <header>
-        <div>
-          <h1>LoanClear</h1>
-          <p className="tag">{t.tagline}</p>
+    <>
+      <a className="skip" href="#main">{t.skipLink}</a>
+      <header className="topbar">
+        <div className="brand">
+          <span className="mark" aria-hidden="true">LC</span>
+          <span className="wordmark">LoanClear</span>
+          <span className="tag">{t.tagline}</span>
         </div>
-        <div className="lang" role="group" aria-label="Language">
-          <button type="button" className={lang === "en" ? "on" : ""} aria-pressed={lang === "en"} data-testid="lang-en" onClick={() => setLang("en")}>English</button>
-          <button type="button" className={lang === "hi" ? "on" : ""} aria-pressed={lang === "hi"} data-testid="lang-hi" onClick={() => setLang("hi")}>हिन्दी</button>
+        <div className="lang" role="group" aria-label="Language / भाषा">
+          <button type="button" className={lang === "en" ? "on" : ""} aria-pressed={lang === "en"} lang="en" data-testid="lang-en" onClick={() => setLang("en")}>English</button>
+          <button type="button" className={lang === "hi" ? "on" : ""} aria-pressed={lang === "hi"} lang="hi" data-testid="lang-hi" onClick={() => setLang("hi")}>हिन्दी</button>
         </div>
       </header>
 
-      {error && (
-        <div className="error" role="alert" data-testid="error">
-          <strong>{t.errTitle}</strong> {error}
-        </div>
-      )}
+      <div className="shell">
+        <aside className="rail">
+          <p className="rail-t">{t.workflow}</p>
+          <Stepper labels={t.steps} hints={t.stepHints} current={step} navLabel={t.stepNow} />
+          <p className="rail-step" aria-hidden="true">{t.stepOf(step + 1, t.steps.length)} · {t.steps[step]}</p>
+        </aside>
 
-      {phase !== "review" && (
-        <>
-          <div className="grid">
-            <UploadCard t={t} kind="offer" title={t.offerDoc} picked={picked.offer} disabled={busy} onPick={(p) => setPicked((s) => ({ ...s, offer: p }))} />
-            <UploadCard t={t} kind="kfs" title={t.kfsDoc} picked={picked.kfs} disabled={busy} onPick={(p) => setPicked((s) => ({ ...s, kfs: p }))} />
-          </div>
-          <div className="bar">
-            <button type="button" className="primary" disabled={!picked.kfs || busy} data-testid="extract" onClick={runExtraction}>
-              {busy ? t.extracting : error ? t.retry : t.extract}
-            </button>
-            {busy && <span className="spinner" role="status" aria-label={t.extracting} data-testid="loading" />}
-          </div>
-        </>
-      )}
+        <main id="main" className="workspace">
+          {error && (
+            <div className="error" role="alert" data-testid="error">
+              <strong>{t.errTitle}</strong> {error}
+            </div>
+          )}
 
-      {phase === "review" && docs.kfs && (
-        <>
-          <h2>{t.review}</h2>
-          <p className="meta">{t.reviewHelp}</p>
-          <div className="grid">
-            {docs.offer && <ReviewCard t={t} title={t.offerDoc} doc={docs.offer} onChange={(d) => setDoc("offer", d)} />}
-            <ReviewCard t={t} title={t.kfsDoc} doc={docs.kfs} onChange={(d) => setDoc("kfs", d)} />
-          </div>
-          <div className="bar">
-            <button type="button" className="primary" disabled={calcBusy} data-testid="calculate" onClick={runCalc}>
-              {calcBusy ? t.calculating : t.calculate}
-            </button>
-            <button type="button" className="secondary" onClick={reset}>{t.start}</button>
-          </div>
-          {result && <ResultCard t={t} res={result} kfsNet={kfsField("netCredited")} kfsRepay={kfsField("totalRepayment")} />}
-        </>
-      )}
-    </main>
+          {!inReview && (
+            <>
+              <div className="page-head">
+                <h1>{t.uploadTitle}</h1>
+                <p className="lead">{t.uploadHelp}</p>
+              </div>
+
+              <section className="example" aria-labelledby="try-h">
+                <div>
+                  <span className="badge synthetic">{t.sampleLabel}</span>
+                  <h2 id="try-h">{t.tryExample}</h2>
+                  <p>{t.tryExampleHelp}</p>
+                </div>
+                <button type="button" className="primary" disabled={busy} data-testid="try-example" onClick={a.tryExample}>
+                  {busy ? t.extracting : t.tryExample}
+                </button>
+              </section>
+
+              <p className="or"><span>{t.orUpload}</span></p>
+              <div className="grid two-col">
+                <UploadCard t={t} kind="offer" title={t.offerUploadTitle} help={t.offerUploadHelp} required={false} picked={picked.offer} disabled={busy} reading={busy && !!picked.offer} onPick={(p) => a.setPicked((s) => ({ ...s, offer: p }))} />
+                <UploadCard t={t} kind="kfs" title={t.kfsUploadTitle} help={t.kfsUploadHelp} required picked={picked.kfs} disabled={busy} reading={busy && !!picked.kfs} onPick={(p) => a.setPicked((s) => ({ ...s, kfs: p }))} />
+              </div>
+
+              <div className="action-bar">
+                <p className="meta" aria-live="polite">{busy ? t.extracting : picked.kfs ? t.readyHint : t.needKfs}</p>
+                <div className="action-btns">
+                  {busy && <span className="spinner" role="status" aria-label={t.extracting} data-testid="loading" />}
+                  <button type="button" className="primary" disabled={!picked.kfs || busy} data-testid="extract" onClick={() => a.runExtraction()}>
+                    {busy ? t.extracting : error ? t.retry : `${t.extract} →`}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {inReview && docs.kfs && (
+            <>
+              {calcOk && (
+                <div className="results-block">
+                  <div className="page-head">
+                    <h1 tabIndex={-1} ref={resultsRef}>{t.resultsTitle}</h1>
+                    <p className="lead">{t.resultsHelp}</p>
+                  </div>
+                  {resultCard}
+                </div>
+              )}
+
+              <div className="page-head">
+                {calcOk ? <h2 tabIndex={-1} ref={headingRef}>{t.factsUsed}</h2> : <h1 tabIndex={-1} ref={headingRef}>{t.review}</h1>}
+                <p className="lead">{t.reviewHelp}</p>
+                <p className="progress" data-testid="progress" aria-live="polite">
+                  <span>{t.critical}: <strong>{critDone} {t.of} {critTotal}</strong> {t.progress.toLowerCase()}</span>
+                  <span className="bar-track" aria-hidden="true"><span style={{ width: `${(critDone / critTotal) * 100}%` }} /></span>
+                </p>
+              </div>
+
+              <ReviewBoard t={t} offer={docs.offer} kfs={docs.kfs} onChange={(k, d) => a.setDoc(k, d)} />
+
+              <div className="action-bar">
+                <button type="button" className="ghost" onClick={a.reset}>{t.start}</button>
+                <button type="button" className="primary" disabled={calcBusy} data-testid="calculate" onClick={a.runCalc}>
+                  {calcBusy ? t.calculating : `${t.calculate} →`}
+                </button>
+              </div>
+              {/* blocked / unsupported states stay next to the action that produced them */}
+              {!calcOk && resultCard}
+            </>
+          )}
+
+          <HowPanel t={t} docs={docs} labels={labels} />
+        </main>
+      </div>
+    </>
   );
 }

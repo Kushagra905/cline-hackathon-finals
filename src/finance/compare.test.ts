@@ -118,3 +118,24 @@ describe("confirmation gating", () => {
     expect(r.tenureDays).toBe(30);
   });
 });
+describe("net credited change is separate from borrowing cost", () => {
+  it("is final-terms net credited minus offer net credited, only when both are confirmed", () => {
+    expect(compareDocuments(offer(), kfs(ALL)).netCreditedChangePaise).toBe(-150000); // 8,000 - 9,500
+    expect(compareDocuments(offer([]), kfs(ALL)).netCreditedChangePaise).toBeUndefined();
+    expect(compareDocuments(undefined, kfs(ALL)).netCreditedChangePaise).toBeUndefined();
+  });
+
+  it("does not equal or feed the borrowing cost", () => {
+    const change = compareDocuments(offer(), kfs(ALL)).netCreditedChangePaise;
+    const cost = calculateBorrowingCost(toConfirmedFacts("kfs", kfs(ALL))).borrowingCostPaise;
+    expect(change).toBe(-150000);
+    expect(cost).toBe(250000);
+  });
+
+  it("marks user-edited evidence so the UI can show it as history, not proof", () => {
+    const o = offer();
+    o.fields = o.fields.map((f) => (f.key === "netCredited" ? { ...f, origin: "user" as const } : f));
+    const d = compareDocuments(o, kfs(ALL)).diffs.find((x) => x.key === "netCredited")!;
+    expect(d.offerEvidence?.origin).toBe("user");
+  });
+});

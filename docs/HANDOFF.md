@@ -42,6 +42,15 @@ The server records the tool names the SDK sends to the model (`beforeModel` hook
 - No PPT, demo video, README or deploy yet (submission phase). No rate-limit/injection fixture test yet.
 - Cost/usage per request is returned by the SDK but not displayed.
 
+## Frontend redesign pass (Arto Plus layout + OOZE typography)
+- Shell: sticky top bar (LC wordmark, EN/HI toggle), 212px workflow rail on desktop mapped to the existing 5 steps; compact horizontal progress bar + "Step n of 5" on ≤860px.
+- Upload: two panels ("Advertised offer — optional", "Final terms / KFS — required") with drop zone, preview, file name/size, Replace/Remove, per-document reading overlay, client-side PNG/JPEG + 8 MB check (server check unchanged), labelled synthetic example, action bar with next step.
+- Review: `ReviewBoard` aligns offer and final-terms cells per field, grouped "What you receive" / "What you repay", each with a plain-language meaning. Edit/confirm logic is unchanged (moved into `useEditor`); "User edited" + original text shown only as history.
+- Results: after a successful calculation the summary moves to the top: "You receive" / "You repay" headline figures, then borrowing cost and repayment period, then the separate net-credit change and the comparison. All values come from confirmed data/server calculation (`Money` only styles `money(paise)` output).
+- CSS tokens in `styles.base.css`; also `styles.controls.css`, `styles.upload.css`, `styles.results.css`, `styles.components.css` (review + responsive, loaded last).
+- Verified: build/typecheck pass, 26/26 unit tests, `npm run e2e` 53/53 on live AI (no selector changes needed). Screenshots: `scripts/out/ui-desktop-3-result-1.png`, `scripts/out/ui-mobile-1-result-1.png`.
+- Not done: no manual screen-reader pass; desktop review board between 860–1100px puts the field meaning above the two cells (intended, not separately screenshotted).
+
 ## Recovery notes (history)
 The repo was recovered from a Git stash (`6a210bc`): package files, `src/finance/money.ts`, `calculate.ts` and `src/shared/schema.ts` were preserved. The ~10K Source Control entries were `node_modules`, now ignored along with build output and secret env files (`.env.example` stays tracked). Single local setup path: `.env.local`.
 
